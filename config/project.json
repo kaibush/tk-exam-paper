@@ -1,0 +1,10 @@
+{
+  "urls": {
+    "login": "https://passport.zujuan.com/login",
+    "qrcode": "https://passport.zujuan.com/connect/weixin-qrcode?iframe=1&width=220&height=220",
+    "wxlogin": "https://passport.zujuan.com/connect/wxlogin",
+    "issubscribe": "https://passport.zujuan.com/connect/issubscribe",
+    "user": "https://www.zujuan.com/u/index"
+  },
+  "timeout": 600
+}
