@@ -18,6 +18,7 @@ class Project:
             "wxlogin": "https://passport.zujuan.com/connect/wxlogin",
             "issubscribe": "https://passport.zujuan.com/connect/issubscribe",
             "user": "https://www.zujuan.com/u/index",
+            "zujuan": "https://www.zujuan.com/u/zujuan"
         }
         check_timeout = 300
     qrcode = os.path.join(root, "qrcode", "wx_qrcode.png")

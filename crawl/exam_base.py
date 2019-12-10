@@ -13,6 +13,7 @@ class URLs:
     wxlogin = Project.urls["wxlogin"]
     issubscribe = Project.urls["issubscribe"]
     user = Project.urls["user"]
+    zujuan = Project.urls["zujuan"]
 
 
 class ExamPaperBase:
@@ -34,9 +35,13 @@ class ExamPaperBase:
             return False
         login_succ = soup.find("legend", attrs={"class": "form-title"})
         if login_succ and login_succ.text.find("第三方账号绑定") != -1:
-            logging.info("一键登录成功")
+            logging.info("已检测，登录成功")
             return True
         return False
+
+    @staticmethod
+    def clear_text(text):
+        return text.replace("\n", "")
 
 
 class LogoutError(Exception):

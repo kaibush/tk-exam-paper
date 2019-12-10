@@ -4,7 +4,8 @@
     "qrcode": "https://passport.zujuan.com/connect/weixin-qrcode?iframe=1&width=220&height=220",
     "wxlogin": "https://passport.zujuan.com/connect/wxlogin",
     "issubscribe": "https://passport.zujuan.com/connect/issubscribe",
-    "user": "https://www.zujuan.com/u/index"
+    "user": "https://www.zujuan.com/u/index",
+    "zujuan": "https://www.zujuan.com/u/zujuan"
   },
   "timeout": 600
 }

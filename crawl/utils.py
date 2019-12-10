@@ -38,11 +38,9 @@ def logger(func):
 
 class WorkProcess:
     workers = []
-    result = mp.Manager().dict()
 
-    def put(self, callback, args):
-        self.workers.append(partial(callback, args))
-        print(len(self.workers))
+    def put(self, callback, *args, **kwargs):
+        self.workers.append(partial(callback, *args, **kwargs))
 
     def clear(self):
         self.workers.clear()
@@ -54,40 +52,39 @@ class WorkProcess:
                 p.terminate()
         self.clear()
 
-    @logger
-    def run(self, rest):
-        func = self.workers.pop()
-        self.stop_old_work()
+    def run(self):
+        if self.workers:
+            func = self.workers.pop()
+            self.stop_old_work()
 
-        def runner():
-            r = func()
-            rest[p.pid] = r
-
-        p = mp.Process(target=runner)
-        p.start()
-        logging.info("child pid: %s", p.pid)
-        self.workers.append(p)
-        logging.info("p.is_alive: %s", p.is_alive())
-        # p.join()
+            p = mp.Process(target=func)
+            p.start()
+            logging.info("child pid: %s", p.pid)
+            self.workers.append(p)
+            logging.info("p.is_alive: %s", p.is_alive())
+            # p.join()
 
 
 logging.basicConfig(level=logging.INFO)
-# log = logging.getLogger(__name__)
-# stdout_handler = logging.StreamHandler(sys.stdout)
-# log.addHandler(stdout_handler)
-mp.freeze_support()
+
+
+def p(a, b, c):
+    print(a, b, c)
 
 if __name__ == "__main__":
+    mp.freeze_support()
+    result = mp.Manager().dict()
     w = WorkProcess()
     import time
     from crawl.login_method import ScanLogin
 
-    wx = ScanLogin()
 
-    w.put(wx.check_scan, "test2")
-    w.run(w.result)
+    # wx = ScanLogin()
 
-    w.put(time.sleep, 2)
-    w.run(w.result)
+    w.put(p, 1, 2, 3)
+    w.run()
 
-    print(w.result)
+    w.put(time.sleep, 8)
+    w.run()
+
+    print(result)
