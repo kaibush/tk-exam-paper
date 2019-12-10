@@ -1,8 +1,10 @@
 import logging
 import pickle
+import sys
 from functools import wraps
 
 import requests
+from requests.cookies import RequestsCookieJar
 
 from crawl.project_info import Project
 
@@ -13,11 +15,13 @@ def save_cookies(cookies):
 
 
 def load_cookies():
-    with open(Project.cookies, 'rb') as f:
-        cookies = requests.utils.cookiejar_from_dict(
-            pickle.load(f)
-            # {}
-        )
+    try:
+        with open(Project.cookies, 'rb') as f:
+            cookies = requests.utils.cookiejar_from_dict(
+                pickle.load(f)
+            )
+    except:
+        cookies = RequestsCookieJar()
     return cookies
 
 
@@ -31,3 +35,6 @@ def logger(func):
 
 
 logging.basicConfig(level=logging.INFO)
+# log = logging.getLogger(__name__)
+# stdout_handler = logging.StreamHandler(sys.stdout)
+# log.addHandler(stdout_handler)

@@ -21,4 +21,5 @@ class Project:
         }
         check_timeout = 300
     qrcode = os.path.join(root, "qrcode", "wx_qrcode.png")
+    default_png = os.path.join(root, "qrcode", "default.png")
 

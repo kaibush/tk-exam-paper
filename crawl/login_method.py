@@ -7,7 +7,7 @@ from urllib import parse
 import bs4
 import requests
 
-from crawl.exam_base import ExamPaperBase, URLs
+from crawl.exam_base import ExamPaperBase, URLs, LogoutError
 from crawl.utils import save_cookies, load_cookies, logger
 from crawl.project_info import Project
 
@@ -15,7 +15,6 @@ from crawl.project_info import Project
 class ScanLogin(ExamPaperBase):
     def __init__(self):
         self.sess.get(URLs.login)
-        print(self.sess.cookies.get_dict())
 
     @logger
     def get_qrcode_url(self):
@@ -43,6 +42,7 @@ class ScanLogin(ExamPaperBase):
 
     @logger
     def check_scan(self, ticket):
+        logging.info("等待扫码")
         query = {
             "ticket": ticket,
             "jump_url": "https://www.zujuan.com",
@@ -84,18 +84,18 @@ class CookiesLogin(ExamPaperBase):
     def login_by_cookies(self):
         cookies = load_cookies()
         self.sess.cookies = cookies
-        self.check_login_succ()
-        # resp = self.sess.get()
-        # print(resp.text)
+        if not self.check_login_succ():
+            raise LogoutError("pls scan qrcode to login again")
 
 
 if __name__ == "__main__":
     wx_scan = ScanLogin()
-    # qrcode = wx_scan.get_qrcode_url()
-    # wx_scan.save_qrcode_pic(qrcode)
-    # ticket = wx_scan.get_ticket(qrcode)
-    # print(ticket)
-    # wx_scan.login_by_scan(ticket)
+    qrcode = wx_scan.get_qrcode_url()
+    wx_scan.save_qrcode_pic(qrcode)
+    ticket = wx_scan.get_ticket(qrcode)
+    print(ticket)
+    wx_scan.login_by_scan(ticket)
+    wx_scan.check_login_succ()
 
     cookies_login = CookiesLogin()
     cookies_login.login_by_cookies()

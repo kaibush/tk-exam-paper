@@ -4,6 +4,7 @@ import bs4
 import requests
 
 from crawl.project_info import Project
+from crawl.utils import logger
 
 
 class URLs:
@@ -21,9 +22,7 @@ class ExamPaperBase:
                       "537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
     }
 
-    @staticmethod
-    def get(*args, **kwargs):
-        return ExamPaperBase.sess.get(*args, **kwargs)
+    get = sess.get
 
     @logger
     def check_login_succ(self):
@@ -38,3 +37,7 @@ class ExamPaperBase:
             logging.info("一键登录成功")
             return True
         return False
+
+
+class LogoutError(Exception):
+    pass
