@@ -1,6 +1,7 @@
 import json
 import logging
 import random
+import threading
 import time
 from urllib import parse
 
@@ -42,7 +43,7 @@ class ScanLogin(ExamPaperBase):
 
     @logger
     def check_scan(self, ticket):
-        logging.info("等待扫码")
+        logging.info("等待扫码: %s", ticket)
         query = {
             "ticket": ticket,
             "jump_url": "https://www.zujuan.com",
@@ -52,6 +53,7 @@ class ScanLogin(ExamPaperBase):
         check_cnt = 0
         scan_status = False
         while check_cnt < Project.check_timeout:
+            logging.info("扫码...[%s]", threading.current_thread())
             is_login_resp = self.sess.get(check_login_url)
             resp = json.loads(is_login_resp.text)
             # code = 0 等待扫码

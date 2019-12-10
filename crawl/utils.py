@@ -1,7 +1,9 @@
 import logging
+import multiprocessing as mp
 import pickle
-import sys
+from functools import partial
 from functools import wraps
+from queue import Queue
 
 import requests
 from requests.cookies import RequestsCookieJar
@@ -34,7 +36,58 @@ def logger(func):
     return wrapper
 
 
+class WorkProcess:
+    workers = []
+    result = mp.Manager().dict()
+
+    def put(self, callback, args):
+        self.workers.append(partial(callback, args))
+        print(len(self.workers))
+
+    def clear(self):
+        self.workers.clear()
+
+    def stop_old_work(self):
+        for p in self.workers:
+            if p.is_alive():
+                logging.info("stop old worker: %s", p.pid)
+                p.terminate()
+        self.clear()
+
+    @logger
+    def run(self, rest):
+        func = self.workers.pop()
+        self.stop_old_work()
+
+        def runner():
+            r = func()
+            rest[p.pid] = r
+
+        p = mp.Process(target=runner)
+        p.start()
+        logging.info("child pid: %s", p.pid)
+        self.workers.append(p)
+        logging.info("p.is_alive: %s", p.is_alive())
+        # p.join()
+
+
 logging.basicConfig(level=logging.INFO)
 # log = logging.getLogger(__name__)
 # stdout_handler = logging.StreamHandler(sys.stdout)
 # log.addHandler(stdout_handler)
+mp.freeze_support()
+
+if __name__ == "__main__":
+    w = WorkProcess()
+    import time
+    from crawl.login_method import ScanLogin
+
+    wx = ScanLogin()
+
+    w.put(wx.check_scan, "test2")
+    w.run(w.result)
+
+    w.put(time.sleep, 2)
+    w.run(w.result)
+
+    print(w.result)
