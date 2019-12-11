@@ -1,19 +1,17 @@
 import logging
-import multiprocessing as mp
-from functools import partial
 from multiprocessing import freeze_support
-import os
-import threading
-import tkinter as tk_
+from tkinter import messagebox
+# from tkinter import *
+from ui.mttkinter import *
+from tkinter.ttk import *
+
+from PIL import Image, ImageTk
 from ttkwidgets import *
 
-from crawl.login_method import ScanLogin, CookiesLogin, ZuJuanView
+from crawl.exam_zujuan import ScanLogin, CookiesLogin, ZuJuanView
 from crawl.project_info import Project
 from crawl.utils import WorkProcess
-from ui.mttkinter import *
-# from tkinter import *
-from tkinter.ttk import *
-from PIL import Image, ImageTk
+
 
 
 class UIWidget(dict):
@@ -87,10 +85,18 @@ class MainUI:
             bt_frame = Frame(login_frame)
             bt_frame.pack(side="top", anchor="nw", fill="both")
 
-            Button(bt_frame, text="一键登录", command=self.login_by_cookies).pack(
-                side="left")
-            Button(bt_frame, text="扫码登录", command=self.login_by_scan).pack(
-                side="right", anchor="e")
+            Button(bt_frame, text="一键登录", command=self.login_by_cookies).grid(
+                row=0, column=0, ipadx=12.5
+            )
+            Button(bt_frame, text="扫码登录", command=self.login_by_scan).grid(
+                row=0, column=1, ipadx=12.5
+            )
+            Button(bt_frame, text="生成", command=self.run_tasks).grid(
+                row=1, column=0, ipadx=12.5
+            )
+            Button(bt_frame, text="终止任务", command=self.stop_tasks).grid(
+                row=1, column=1, ipadx=12.5
+            )
 
         make_canvas()
         make_buttons()
@@ -107,16 +113,28 @@ class MainUI:
             Label(user_frame, text="组卷记录").pack(side="top", anchor="nw")
             box = ScrolledListbox(user_frame, width=80, height=12)
             UI["box"] = box.listbox
+            box.pack(side="top", anchor="nw")
 
+        def make_tasks():
+            Label(user_frame, text="添加任务").pack(side="top", anchor="nw")
+            box = ScrolledListbox(user_frame, width=80, height=6)
+            UI["task"] = box.listbox
             box.pack(side="top", anchor="nw")
 
         make_user_info()
         make_paper_records()
+        make_tasks()
 
     def login_by_cookies(self):
         pass
 
     def login_by_scan(self):
+        pass
+
+    def run_tasks(self):
+        pass
+
+    def stop_tasks(self):
         pass
 
 
@@ -125,12 +143,14 @@ class LoginUI(MainUI):
         super(LoginUI, self).__init__(root)
         self.build_pop_menu()
         self.init_login()
+        self.login_scan_ids = []
+        self.check_scan_ids = []
         UI.box.bind('<Button-3>', self.pop_menu_event)
 
     def build_pop_menu(self):
         self.menubar = Menu(self.root, tearoff=False)  # 制作一个菜单实例
         for menu in [
-            ("生成", self.gen_exam),
+            ("添加任务", self.make_task),
         ]:
             self.menubar.add_command(label=menu[0], command=menu[1])
 
@@ -148,46 +168,68 @@ class LoginUI(MainUI):
         logging.info("等待扫码...")
         if worker.workers:
             p = worker.workers[-1]
-            if not p.is_alive():
+            if not p.is_alive() and self.wx_scan.get_scan_flag():
                 status = 1
                 logging.info("扫码完成，正在跳转...")
-                # TODO
                 threading.Thread(
                     target=self.update_by_thread, args=(ticket,)
                 ).start()
 
         if not status:
-            self.root.after(1000, lambda: self.check_scan(ticket))
+            check_scan_id = self.root.after(1000, lambda: self.check_scan(ticket))
+            self.check_scan_ids.append(check_scan_id)
 
     def login_by_scan(self):
         if not UI.debug:
             self.build_debug_ui()
-
+        self.clear_view()
         qrcode = self.wx_scan.get_qrcode_url()
         self.wx_scan.save_qrcode_pic(qrcode)
         self.update_qrcode(Project.qrcode)
         ticket = self.wx_scan.get_ticket(qrcode)
         worker.put(self.wx_scan.check_scan, ticket)
         worker.run()
-        self.root.after(1000, lambda: self.check_scan(ticket))
+        self.cancel_before_scan()
+        login_scan_id = self.root.after(
+            1000, lambda: self.check_scan(ticket)
+        )
+        self.login_scan_ids.append(login_scan_id)
 
     def login_by_cookies(self):
         if not UI.debug:
             self.build_debug_ui()
-
+        self.clear_view()
+        self.cancel_before_scan()
         self.cookies_login.login_by_cookies()
         self.update_user()
         self.update_exam_view()
+
+    def cancel_before_scan(self):
+        logging.info("清除登录历史")
+        for _id in self.login_scan_ids:
+            self.root.after_cancel(_id)
+        for _id in self.check_scan_ids:
+            self.root.after_cancel(_id)
+        self.login_scan_ids.clear()
+        self.check_scan_ids.clear()
+        worker.stop_old_work()
 
     def update_user(self):
         username = self.zujuan.get_username()
         UI.user.config(text=username)
 
-    def update_exam_view(self):
+    def clear_view(self):
+        logging.info("清除视图")
         UI.box.delete(0, END)
+        UI.task.delete(0, END)
+
+    def update_exam_view(self):
+        if UI.records:
+            del UI["records"]
         records = self.zujuan.get_zujuan_view()
+        UI["records"] = records
         for record_pid in records:
-            UI.box.insert(END, records[record_pid].text + "-(%s)" % record_pid)
+            UI.box.insert(END, records[record_pid].text + "-%s" % record_pid)
         # self.wx_scan.login_by_scan(ticket)
         # self.wx_scan.check_login_succ()
 
@@ -201,9 +243,36 @@ class LoginUI(MainUI):
         text, pid = record.split('-')
         return text, pid
 
-    def gen_exam(self):
+    def is_add_task(self, add):
+        tasks = UI.task.get(0, END)
+        for task in tasks:
+            if task == add:
+                return True
+        return False
+
+    def make_task(self):
         sel = UI.box.curselection()
-        print(UI.box.get(sel))
+        if sel:
+            sel_text = UI.box.get(sel)
+            if self.is_add_task(sel_text):
+                return messagebox.showinfo("提示", "任务已存在")
+            UI.task.insert(END, sel_text)
+
+    def all_tasks_pending(self):
+        tasks = UI.task.get(0, END)
+        href_pool = []
+        if UI.records:
+            for task in tasks:
+                text, pid = self.parse_record(task)
+                href_pool.append(
+                    [task, UI.records[pid].href]
+                )
+        return href_pool
+
+    def run_tasks(self):
+        logging.info("执行组卷任务")
+        print(self.all_tasks_pending())
+
 
 if __name__ == "__main__":
     freeze_support()
