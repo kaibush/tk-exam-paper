@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import random
 import threading
 import time
@@ -16,6 +17,9 @@ from crawl.project_info import Project
 class ScanLogin(ExamPaperBase):
     def __init__(self):
         self.sess.get(URLs.login)
+
+    def remove_scan_flag(self):
+        os.remove(Project.scan_flag)
 
     @logger
     def get_qrcode_url(self):
@@ -71,7 +75,8 @@ class ScanLogin(ExamPaperBase):
             'jump_url': 'https://www.zujuan.com'
         }
         resp = self.sess.get(
-            URLs.wxlogin + '?' + parse.urlencode(wx_query)
+            URLs.wxlogin + '?' + parse.urlencode(wx_query),
+            verify=False
         )
         if resp.status_code == 200:
             logging.info("登录成功，保存cookies")
@@ -101,22 +106,23 @@ class ZuJuanView(ExamPaperBase):
         resp = self.get(URLs.zujuan)
         soup = bs4.BeautifulSoup(resp.text)
         zujuan = soup.find("ul", attrs={"class": "f-cb"})
-        for li in zujuan.find_all("p", attrs={"class": "test-txt-p1"}):
-            href = li.find("a")
-            Record = namedtuple('Record', ['text', 'href'])
-            info = Record(href.text, href["href"])
-            ret[href["pid"]] = info
+        if zujuan:
+            for li in zujuan.find_all("p", attrs={"class": "test-txt-p1"}):
+                href = li.find("a")
+                Record = namedtuple('Record', ['text', 'href'])
+                info = Record(href.text, href["href"])
+                ret[href["pid"]] = info
         return ret
 
 if __name__ == "__main__":
-    # wx_scan = ScanLogin()
-    # qrcode = wx_scan.get_qrcode_url()
-    # wx_scan.save_qrcode_pic(qrcode)
-    # ticket = wx_scan.get_ticket(qrcode)
-    # print(ticket)
-    # wx_scan.check_scan()
-    # wx_scan.login_by_scan(ticket)
-    # wx_scan.check_login_succ()
+    wx_scan = ScanLogin()
+    qrcode = wx_scan.get_qrcode_url()
+    wx_scan.save_qrcode_pic(qrcode)
+    ticket = wx_scan.get_ticket(qrcode)
+    print(ticket)
+    wx_scan.check_scan(ticket)
+    wx_scan.login_by_scan(ticket)
+    wx_scan.check_login_succ()
 
     cookies_login = CookiesLogin()
     cookies_login.login_by_cookies()
