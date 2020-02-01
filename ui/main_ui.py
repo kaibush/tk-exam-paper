@@ -1,5 +1,5 @@
 import logging
-from multiprocessing import freeze_support
+from multiprocessing import freeze_support, Pool
 from tkinter import messagebox
 # from tkinter import *
 from ui.mttkinter import *
@@ -8,10 +8,9 @@ from tkinter.ttk import *
 from PIL import Image, ImageTk
 from ttkwidgets import *
 
-from crawl.exam_zujuan import ScanLogin, CookiesLogin, ZuJuanView
+from crawl.exam_zujuan import ScanLogin, CookiesLogin, ZuJuanView, ZuJuanTasks
 from crawl.project_info import Project
 from crawl.utils import WorkProcess
-
 
 
 class UIWidget(dict):
@@ -125,6 +124,10 @@ class MainUI:
         make_paper_records()
         make_tasks()
 
+    def show_msg(self):
+        top = Toplevel(self.root)
+        Label(top, text="等待task完成").pack()
+
     def login_by_cookies(self):
         pass
 
@@ -140,11 +143,12 @@ class MainUI:
 
 class LoginUI(MainUI):
     def __init__(self, root):
+        self.pool = None
+        self.login_scan_ids = []
+        self.check_scan_ids = []
         super(LoginUI, self).__init__(root)
         self.build_pop_menu()
         self.init_login()
-        self.login_scan_ids = []
-        self.check_scan_ids = []
         UI.box.bind('<Button-3>', self.pop_menu_event)
 
     def build_pop_menu(self):
@@ -270,8 +274,21 @@ class LoginUI(MainUI):
         return href_pool
 
     def run_tasks(self):
+        threading.Thread(target=self._run_tasks).start()
+
+    def _run_tasks(self):
         logging.info("执行组卷任务")
-        print(self.all_tasks_pending())
+        yes = messagebox.askyesno("提示", "组卷tasks启动?")
+        if yes:
+            self.show_msg()
+            self.pool = Pool()
+            ZuJuanTasks().task_run(
+                self.pool, self.all_tasks_pending()
+            )
+            messagebox.showinfo("提示", "组卷tasks已结束")
+
+    def stop_tasks(self):
+        ZuJuanTasks().task_shutdown(self.pool)
 
 
 if __name__ == "__main__":

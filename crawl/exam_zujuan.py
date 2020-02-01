@@ -4,6 +4,8 @@ import os
 import random
 import threading
 import time
+import multiprocessing as mp
+from multiprocessing.pool import Pool
 from urllib import parse
 from collections import OrderedDict, namedtuple
 import bs4
@@ -18,8 +20,19 @@ class ScanLogin(ExamPaperBase):
     def __init__(self):
         self.sess.get(URLs.login)
 
-    def remove_scan_flag(self):
-        os.remove(Project.scan_flag)
+    @staticmethod
+    def remove_scan_flag():
+        if os.path.exists(Project.scan_flag):
+            os.remove(Project.scan_flag)
+
+    @staticmethod
+    def generate_scan_flag():
+        with open(Project.scan_flag, "wb") as fp:
+            fp.write(b"1")
+
+    @staticmethod
+    def get_scan_flag():
+        return os.path.exists(Project.scan_flag)
 
     @logger
     def get_qrcode_url(self):
@@ -48,6 +61,7 @@ class ScanLogin(ExamPaperBase):
     @logger
     def check_scan(self, ticket):
         logging.info("等待扫码: %s", ticket)
+        self.remove_scan_flag()
         query = {
             "ticket": ticket,
             "jump_url": "https://www.zujuan.com",
@@ -63,6 +77,7 @@ class ScanLogin(ExamPaperBase):
             # code = 0 等待扫码
             if resp["code"] == 1:
                 scan_status = True
+                self.generate_scan_flag()
                 break
             time.sleep(1)
             check_cnt += 1
@@ -97,14 +112,14 @@ class CookiesLogin(ExamPaperBase):
 class ZuJuanView(ExamPaperBase):
     def get_username(self):
         resp = self.get(URLs.user)
-        soup = bs4.BeautifulSoup(resp.text)
+        soup = bs4.BeautifulSoup(resp.text, "html.parser")
         real_name = soup.find("div", attrs={"id": "J_realname"})
         return real_name.text.replace("\n", "") if real_name else "未知用户名"
 
     def get_zujuan_view(self):
         ret = OrderedDict()
         resp = self.get(URLs.zujuan)
-        soup = bs4.BeautifulSoup(resp.text)
+        soup = bs4.BeautifulSoup(resp.text, "html.parser")
         zujuan = soup.find("ul", attrs={"class": "f-cb"})
         if zujuan:
             for li in zujuan.find_all("p", attrs={"class": "test-txt-p1"}):
@@ -114,18 +129,57 @@ class ZuJuanView(ExamPaperBase):
                 ret[href["pid"]] = info
         return ret
 
+
+class ZuJuanTasks(ExamPaperBase):
+    future_queue = []
+
+    def zujuan_task(self, task):
+        print(task)
+        time.sleep(10)
+        print("end===========")
+        return task
+
+    def task_run(self, pool, args):
+        for task_args in args:
+            pool.apply_async(self.zujuan_task, (task_args,))
+        pool.close()
+        logging.info("等待所有task执行完成...")
+        pool.join()
+        logging.info("所有task执行完成...")
+
+    @staticmethod
+    def task_shutdown(pool):
+        if isinstance(pool, Pool):
+            logging.info("终止所有任务")
+            pool.terminate()
+
+
 if __name__ == "__main__":
+    mp.freeze_support()
     wx_scan = ScanLogin()
-    qrcode = wx_scan.get_qrcode_url()
-    wx_scan.save_qrcode_pic(qrcode)
-    ticket = wx_scan.get_ticket(qrcode)
-    print(ticket)
-    wx_scan.check_scan(ticket)
-    wx_scan.login_by_scan(ticket)
-    wx_scan.check_login_succ()
+    wx_scan.remove_scan_flag()
 
-    cookies_login = CookiesLogin()
-    cookies_login.login_by_cookies()
+    pool = mp.Pool(processes=2)
+    zujuan = ZuJuanTasks()
+    zujuan.task_run(
+        pool,
+        [
+            ["组卷名称", "href====="],
+            ["组卷名称2", "href=====2"],
+        ]
 
-    print(ZuJuanView().get_username())
-    print(ZuJuanView().get_zujuan_view())
+    )
+    zujuan.task_shutdown(pool)
+    # qrcode = wx_scan.get_qrcode_url()
+    # wx_scan.save_qrcode_pic(qrcode)
+    # ticket = wx_scan.get_ticket(qrcode)
+    # print(ticket)
+    # wx_scan.check_scan(ticket)
+    # wx_scan.login_by_scan(ticket)
+    # wx_scan.check_login_succ()
+    #
+    # cookies_login = CookiesLogin()
+    # cookies_login.login_by_cookies()
+    #
+    # print(ZuJuanView().get_username())
+    # print(ZuJuanView().get_zujuan_view())

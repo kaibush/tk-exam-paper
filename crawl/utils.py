@@ -76,7 +76,7 @@ if __name__ == "__main__":
     result = mp.Manager().dict()
     w = WorkProcess()
     import time
-    from crawl.login_method import ScanLogin
+    from crawl.exam_zujuan import ScanLogin
 
 
     # wx = ScanLogin()
