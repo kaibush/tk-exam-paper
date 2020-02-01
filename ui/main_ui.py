@@ -1,7 +1,11 @@
 import logging
+import os
+import threading
 from multiprocessing import freeze_support, Pool
 from tkinter import messagebox
 # from tkinter import *
+import requests
+
 from ui.mttkinter import *
 from tkinter.ttk import *
 
@@ -291,12 +295,25 @@ class LoginUI(MainUI):
         ZuJuanTasks().task_shutdown(self.pool)
 
 
+def network_heart(root):
+    root.withdraw()
+    try:
+        requests.get("http://www.baidu.com")
+    except:
+        messagebox.showerror("网络错误", "无法访问互联网，退出程序", parent=root)
+        os._exit(-1)
+    else:
+        root.deiconify()
+
+
 if __name__ == "__main__":
     freeze_support()
     tk = Tk()
-    # app = MainUI(tk)
+    tk.title("zujuan")
     log = logging.getLogger()
-    gui_thead = threading.Thread(target=LoginUI, args=(tk,))
+
+    threading.Thread(target=network_heart, args=(tk,)).start()
+    gui_thead = threading.Timer(0.5, LoginUI, args=(tk,))
     gui_thead.start()
-    print(UI)
-    mainloop()
+
+    tk.mainloop()

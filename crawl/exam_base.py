@@ -14,6 +14,7 @@ class URLs:
     issubscribe = Project.urls["issubscribe"]
     user = Project.urls["user"]
     zujuan = Project.urls["zujuan"]
+    jump_url = Project.urls["jump_url"]
 
 
 class ExamPaperBase:

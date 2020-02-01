@@ -5,7 +5,8 @@
     "wxlogin": "https://passport.zujuan.com/connect/wxlogin",
     "issubscribe": "https://passport.zujuan.com/connect/issubscribe",
     "user": "https://www.zujuan.com/u/index",
-    "zujuan": "https://www.zujuan.com/u/zujuan"
+    "zujuan": "https://www.zujuan.com/u/zujuan",
+    "jump_url": "https://www.zujuan.com"
   },
   "timeout": 600
 }

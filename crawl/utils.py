@@ -31,7 +31,11 @@ def logger(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         logging.info("-->running (%s)", func.__name__)
-        return func(*args, **kwargs)
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logging.error("running (%s) error", func.__name__)
+            raise
 
     return wrapper
 
@@ -68,23 +72,7 @@ class WorkProcess:
 logging.basicConfig(level=logging.INFO)
 
 
-def p(a, b, c):
-    print(a, b, c)
-
 if __name__ == "__main__":
     mp.freeze_support()
     result = mp.Manager().dict()
     w = WorkProcess()
-    import time
-    from crawl.exam_zujuan import ScanLogin
-
-
-    # wx = ScanLogin()
-
-    w.put(p, 1, 2, 3)
-    w.run()
-
-    w.put(time.sleep, 8)
-    w.run()
-
-    print(result)

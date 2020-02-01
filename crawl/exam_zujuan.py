@@ -18,7 +18,10 @@ from crawl.project_info import Project
 
 class ScanLogin(ExamPaperBase):
     def __init__(self):
-        self.sess.get(URLs.login)
+        try:
+            self.sess.get(URLs.login)
+        except Exception:
+            logging.exception("error")
 
     @staticmethod
     def remove_scan_flag():
@@ -64,7 +67,7 @@ class ScanLogin(ExamPaperBase):
         self.remove_scan_flag()
         query = {
             "ticket": ticket,
-            "jump_url": "https://www.zujuan.com",
+            "jump_url": URLs.jump_url,
             "r": random.random()
         }
         check_login_url = URLs.issubscribe + "?" + parse.urlencode(query)
@@ -86,8 +89,8 @@ class ScanLogin(ExamPaperBase):
     @logger
     def login_by_scan(self, ticket):
         wx_query = {
-            'ticket': ticket,
-            'jump_url': 'https://www.zujuan.com'
+            "ticket": ticket,
+            "jump_url": URLs.jump_url
         }
         resp = self.sess.get(
             URLs.wxlogin + '?' + parse.urlencode(wx_query),
@@ -131,7 +134,6 @@ class ZuJuanView(ExamPaperBase):
 
 
 class ZuJuanTasks(ExamPaperBase):
-    future_queue = []
 
     def zujuan_task(self, task):
         print(task)
